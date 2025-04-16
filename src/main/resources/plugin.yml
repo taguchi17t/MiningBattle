@@ -1,0 +1,6 @@
+name: MiningMaster
+version: '1.0'
+main: plugin.miningMaster.Main
+api-version: '1.21'
+commands:
+  gameStart:
