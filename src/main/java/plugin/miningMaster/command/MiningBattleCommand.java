@@ -3,13 +3,16 @@ package plugin.miningMaster.command;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import org.apache.ibatis.jdbc.Null;
+import java.util.SplittableRandom;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockType;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -17,6 +20,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.potion.PotionEffect;
+import org.bukkit.util.Vector;
 import plugin.miningMaster.MPScoreData;
 import plugin.miningMaster.Main;
 import plugin.miningMaster.mapper.data.ExecutingPlayer;
@@ -30,6 +34,7 @@ public class MiningBattleCommand extends BaseCommand implements Listener {
   private final Main main;
   private final MPScoreData mpScoreData = new MPScoreData();
   private final List<ExecutingPlayer> executingPlayerList = new ArrayList<>();
+  private final List<Material> spawnMaterialList = new ArrayList<>();
 
   public MiningBattleCommand(Main main) {
     this.main = main;
@@ -42,8 +47,14 @@ public class MiningBattleCommand extends BaseCommand implements Listener {
       sendMPScoreList(player);
       return false;
     }
+
+    ExecutingPlayer nowExecutingPlayer = getPlayerScore(player);
+
     removePotionEffect(player);
+
     initPlayerStatus(player);
+
+    gameplay(player, nowExecutingPlayer);
     return false;
   }
 
@@ -64,70 +75,93 @@ public class MiningBattleCommand extends BaseCommand implements Listener {
   }
 
   @EventHandler
-  public void onBlockBreak(BlockBreakEvent e){
+  public void onBlockBreak(BlockBreakEvent e) {
     Block block = e.getBlock();
     Player player = e.getPlayer();
+
+    for (ExecutingPlayer executingPlayer : executingPlayerList) {
+      if (executingPlayer.getPlayerName().equals(player.getName())) {
         int point;
         String message = "";
 
-          switch (block.getType()) {
-            case COAL_ORE:
-              point = 3;
-              message = "石炭鉱石をゲット！現在のスコアは" + (point) + "点!";
-              break;
-            case IRON_ORE:
-              point = 5;
-              message = "鉄鉱石をゲット！現在のスコアは" + (point) + "点!";
-              break;
-            case GOLD_ORE:
-              point = 10;
-              message = "金鉱石をゲット！現在のスコアは" + (point) + "点!";
-              break;
-            case DIAMOND_ORE:
-              point = 30;
-              message = "ダイヤモンド鉱石をゲット！現在のスコアは" + (point) + "点!";
-              break;
-            default:
-              break;
-          }
+        switch (block.getType()) {
+          case COAL_ORE:
+            point = 3;
+            message = "石炭鉱石をゲット！現在のスコアは" + (executingPlayer.getScore() + point) + "点!";
+            break;
+          case IRON_ORE:
+            point = 5;
+            message = "鉄鉱石をゲット！現在のスコアは" + (executingPlayer.getScore() + point) + "点!";
+            break;
+          case GOLD_ORE:
+            point = 10;
+            message = "金鉱石をゲット！現在のスコアは" + (executingPlayer.getScore() + point) + "点!";
+            break;
+          case DIAMOND_ORE:
+            point = 30;
+            message = "ダイヤモンド鉱石をゲット！現在のスコアは" + (executingPlayer.getScore() + point) + "点!";
+            break;
+          default:
+            point = 0;
+            break;
+        }
 
-          if(!message.isEmpty()) {
-            player.sendMessage(message);
-          }
-
-//    for (ExecutingPlayer executingPlayer : executingPlayerList) {
-//      if (executingPlayer.getPlayerName().equals(player.getName())) {
-//        int point;
-//        String message = "";
-//
-//        switch (block.getType()) {
-//          case COAL_ORE:
-//            point = 3;
-//            message = "石炭鉱石をゲット！現在のスコアは" + (executingPlayer.getScore() + point) + "点!";
-//            break;
-//          case IRON_ORE:
-//            point = 5;
-//            message = "鉄鉱石をゲット！現在のスコアは" + (executingPlayer.getScore() + point) + "点!";
-//            break;
-//          case GOLD_ORE:
-//            point = 10;
-//            message = "金鉱石をゲット！現在のスコアは" + (executingPlayer.getScore() + point) + "点!";
-//            break;
-//          case DIAMOND_ORE:
-//            point = 30;
-//            message = "ダイヤモンド鉱石をゲット！現在のスコアは" + (executingPlayer.getScore() + point) + "点!";
-//            break;
-//          default:
-//            point = 0;
-//            break;
-//        }
-//
-//        executingPlayer.setScore(executingPlayer.getScore() + point); // スコアを加算
-//        if(!message.isEmpty()) {
-//          player.sendMessage(message);
-//        }
-
+        executingPlayer.setScore(executingPlayer.getScore() + point); // スコアを加算
+        if (!message.isEmpty()) {
+          player.sendMessage(message);
+        }
+      }
     }
+  }
+
+  private void gameplay(Player player, ExecutingPlayer nowExecutingPlayer) {
+    Bukkit.getScheduler().runTaskTimer(main, Runnable -> {
+      if (nowExecutingPlayer.getGameTime() <= 0) {
+        Runnable.cancel();
+
+        player.sendTitle("ゲームが終了しました。",
+            nowExecutingPlayer.getPlayerName() + "合計" + nowExecutingPlayer.getScore() + "点!",
+            0,30,0);
+
+        spawnMaterialList.clear();
+        removePotionEffect(player);
+
+        // スコア登録処理
+        mpScoreData.insert(
+            new MPScore(nowExecutingPlayer.getPlayerName(), nowExecutingPlayer.getScore()));
+        return;
+      }
+      nowExecutingPlayer.setGameTime(nowExecutingPlayer.getGameTime() - 5);
+    },0,5 * 20);
+  }
+
+  private Location getOleSpawnLocation(Player player) {
+    Location playerEyeLocation = player.getEyeLocation();
+    Vector direction = playerEyeLocation.getDirection();
+    Vector spawnVector = direction.multiply(10);
+    Location targetLocation = playerEyeLocation.add(spawnVector);
+
+    player.sendMessage(String.format(
+                targetLocation.getX() + " " +
+                targetLocation.getY() + " " +
+                targetLocation.getZ()));
+
+    return new Location(player.getWorld(),
+        targetLocation.getX(),
+        targetLocation.getY(),
+        targetLocation.getZ());
+  }
+
+  /**
+   * 鉱石のリストを取得します。
+   *
+   * @return material
+   */
+  private Material getMaterial() {
+    List<Material> materialList;
+    materialList = List.of(Material.COAL_ORE, Material.IRON_ORE, Material.GOLD_ORE, Material.DIAMOND_ORE);
+    return materialList.get(new SplittableRandom().nextInt(3));
+  }
 
   /**
    * 現在実行しているプレイヤーのスコア情報を取得する。

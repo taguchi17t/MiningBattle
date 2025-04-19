@@ -18,4 +18,9 @@ public class MPScore {
   private String playerName;
   private int score;
   private LocalDateTime registeredAt;
+
+  public MPScore(String playerName, int score){
+    this.playerName = playerName;
+    this.score = score;
+  }
 }
