@@ -31,10 +31,14 @@ public class MiningBattleCommand extends BaseCommand implements Listener {
   public static final int GAME_TIME = 20;
   public static final String LIST = "list";
 
+
   private final Main main;
   private final MPScoreData mpScoreData = new MPScoreData();
   private final List<ExecutingPlayer> executingPlayerList = new ArrayList<>();
   private final List<Material> spawnMaterialList = new ArrayList<>();
+  private final List<Material>
+      MaterialList = List.of(Material.COAL_ORE, Material.IRON_ORE, Material.GOLD_ORE, Material.DIAMOND_ORE);
+
 
   public MiningBattleCommand(Main main) {
     this.main = main;
@@ -55,6 +59,7 @@ public class MiningBattleCommand extends BaseCommand implements Listener {
     initPlayerStatus(player);
 
     gameplay(player, nowExecutingPlayer);
+
     return false;
   }
 
@@ -121,7 +126,7 @@ public class MiningBattleCommand extends BaseCommand implements Listener {
 
         player.sendTitle("ゲームが終了しました。",
             nowExecutingPlayer.getPlayerName() + "合計" + nowExecutingPlayer.getScore() + "点!",
-            0,30,0);
+            5,50,15);
 
         spawnMaterialList.clear();
         removePotionEffect(player);
@@ -131,36 +136,26 @@ public class MiningBattleCommand extends BaseCommand implements Listener {
             new MPScore(nowExecutingPlayer.getPlayerName(), nowExecutingPlayer.getScore()));
         return;
       }
-      nowExecutingPlayer.setGameTime(nowExecutingPlayer.getGameTime() - 5);
-    },0,5 * 20);
+
+      Location spawnLocation = getOleSpawnLocation(player);
+      Block spawnedBlock = player.getWorld().getBlockAt(spawnLocation);
+      spawnedBlock.setType(MaterialList.get(new SplittableRandom().nextInt(MaterialList.size())));
+      Material material = spawnedBlock.getType();
+      spawnMaterialList.add(material);
+      nowExecutingPlayer.setGameTime(nowExecutingPlayer.getGameTime() - 1);
+    },0, 20);
   }
 
   private Location getOleSpawnLocation(Player player) {
-    Location playerEyeLocation = player.getEyeLocation();
-    Vector direction = playerEyeLocation.getDirection();
-    Vector spawnVector = direction.multiply(10);
-    Location targetLocation = playerEyeLocation.add(spawnVector);
+    Location playerLocation = player.getLocation();
+    int randomX = new SplittableRandom().nextInt(20) - 10;
+    int randomZ = new SplittableRandom().nextInt(20) - 10;
 
-    player.sendMessage(String.format(
-                targetLocation.getX() + " " +
-                targetLocation.getY() + " " +
-                targetLocation.getZ()));
+    double x = playerLocation.getX() + randomX;
+    double y = playerLocation.getY();
+    double z = playerLocation.getZ() + randomZ;
 
-    return new Location(player.getWorld(),
-        targetLocation.getX(),
-        targetLocation.getY(),
-        targetLocation.getZ());
-  }
-
-  /**
-   * 鉱石のリストを取得します。
-   *
-   * @return material
-   */
-  private Material getMaterial() {
-    List<Material> materialList;
-    materialList = List.of(Material.COAL_ORE, Material.IRON_ORE, Material.GOLD_ORE, Material.DIAMOND_ORE);
-    return materialList.get(new SplittableRandom().nextInt(3));
+    return new Location(playerLocation.getWorld(), x, y, z);
   }
 
   /**
