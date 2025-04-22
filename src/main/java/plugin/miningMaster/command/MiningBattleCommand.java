@@ -3,16 +3,16 @@ package plugin.miningMaster.command;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.SplittableRandom;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockType;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -20,7 +20,6 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.potion.PotionEffect;
-import org.bukkit.util.Vector;
 import plugin.miningMaster.MPScoreData;
 import plugin.miningMaster.Main;
 import plugin.miningMaster.mapper.data.ExecutingPlayer;
@@ -84,6 +83,10 @@ public class MiningBattleCommand extends BaseCommand implements Listener {
     Block block = e.getBlock();
     Player player = e.getPlayer();
 
+    if (Objects.isNull() || spawnMaterialList.stream().noneMatch(material -> material.equals(MaterialList.get(block.getType().ordinal())))) {
+      return;
+    }
+
     for (ExecutingPlayer executingPlayer : executingPlayerList) {
       if (executingPlayer.getPlayerName().equals(player.getName())) {
         int point;
@@ -142,8 +145,8 @@ public class MiningBattleCommand extends BaseCommand implements Listener {
       spawnedBlock.setType(MaterialList.get(new SplittableRandom().nextInt(MaterialList.size())));
       Material material = spawnedBlock.getType();
       spawnMaterialList.add(material);
-      nowExecutingPlayer.setGameTime(nowExecutingPlayer.getGameTime() - 1);
-    },0, 20);
+      nowExecutingPlayer.setGameTime(nowExecutingPlayer.getGameTime() - 5);
+    },0, 20 * 5);
   }
 
   private Location getOleSpawnLocation(Player player) {
